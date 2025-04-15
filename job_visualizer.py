@@ -2,19 +2,73 @@ import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
-from datetime import datetime
+from datetime import datetime, timedelta
 import streamlit as st
 from typing import List, Dict, Any
 import json
 from pathlib import Path
+import random
 
 class JobVisualizer:
     def __init__(self, storage_dir: str = 'data'):
         self.storage_dir = Path(storage_dir)
         self.jobs_file = self.storage_dir / 'jobs.json'
         self.stats_file = self.storage_dir / 'stats.json'
+        self._ensure_data_exists()
         self._load_data()
         
+    def _ensure_data_exists(self):
+        """Create data directory and sample data if it doesn't exist"""
+        try:
+            if not self.jobs_file.exists():
+                self.storage_dir.mkdir(exist_ok=True)
+                self._create_sample_data()
+        except Exception as e:
+            print(f"Error ensuring data exists: {e}")
+            
+    def _create_sample_data(self):
+        """Create sample job data"""
+        # Sample job data
+        jobs = []
+        companies = ['Google', 'Microsoft', 'Apple', 'Amazon', 'Meta', 'Netflix', 'Tesla', 'SpaceX']
+        sources = ['LinkedIn', 'Indeed', 'Company Website']
+        locations = ['San Francisco', 'New York', 'Seattle', 'Austin', 'Remote']
+        
+        # Generate 100 sample jobs
+        for i in range(100):
+            company = random.choice(companies)
+            job = {
+                'title': f'Software Engineer {random.choice(["", "Senior", "Lead"])}',
+                'company': company,
+                'location': random.choice(locations),
+                'salary': random.randint(80000, 250000),
+                'source': random.choice(sources),
+                'date_posted': (datetime.now() - timedelta(days=random.randint(0, 30))).isoformat(),
+                'url': f'https://example.com/jobs/{i}',
+                'description': f'Exciting opportunity at {company} for a software engineer position.'
+            }
+            jobs.append(job)
+        
+        # Save jobs to file
+        with open(self.jobs_file, 'w') as f:
+            json.dump(jobs, f, indent=2)
+        
+        # Create stats
+        stats = {
+            'total_jobs': len(jobs),
+            'last_updated': datetime.now().isoformat(),
+            'sources': {source: sum(1 for job in jobs if job['source'] == source) for source in sources},
+            'categories': {
+                'Software Engineer': sum(1 for job in jobs if 'Software Engineer' in job['title']),
+                'Senior Software Engineer': sum(1 for job in jobs if 'Senior Software Engineer' in job['title']),
+                'Lead Software Engineer': sum(1 for job in jobs if 'Lead Software Engineer' in job['title'])
+            }
+        }
+        
+        # Save stats to file
+        with open(self.stats_file, 'w') as f:
+            json.dump(stats, f, indent=2)
+            
     def _load_data(self):
         """Load job data from storage"""
         try:
